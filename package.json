@@ -1,0 +1,31 @@
+{
+  "name": "mewtcha",
+  "version": "1.0.0",
+  "description": "Breaking d3lta's internet",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edunad/mewtcha.git"
+  },
+  "keywords": [
+    "captcha",
+    "internet",
+    "auto-reload"
+  ],
+  "author": "Eduardo Fernandes (Failcake)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/edunad/mewtcha/issues"
+  },
+  "homepage": "https://github.com/edunad/mewtcha#readme",
+  "dependencies": {
+    "@tensorflow/tfjs-node": "^1.1.2",
+	"opencv4nodejs": "^4.16.0",
+  },
+  "devDependencies": {
+    "npmlog": "^4.1.2"
+  }
+}
