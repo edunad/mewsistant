@@ -7,10 +7,10 @@ Object.keys(trainingData).forEach((slide) => {
         if(err) throw new Error(err);
 
         let gray = img.cvtColor(cv.COLOR_BGR2GRAY);
-        let adaptTresh = gray.adaptiveThreshold(255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 403, 63);
-        let canny = adaptTresh.canny(120, 200, 3);
+        let adaptTresh = gray.adaptiveThreshold(255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 403, 67);
+        let canny = adaptTresh.canny(140, 200, 3);
 
-        let lines = canny.houghLinesP(1, Math.PI / 180, 1, 20, 1 );
+        let lines = canny.houghLinesP(1, Math.PI / 180, 1, 24, 1 );
         let lineMask = img.cvtColor(cv.COLOR_BGR2GRAY);
         lines.forEach((line) => {
             let p1 = new cv.Point(line.y, line.x);
@@ -21,14 +21,16 @@ Object.keys(trainingData).forEach((slide) => {
 
         adaptTresh = adaptTresh.add(lineMask);
 
-        let dilation_size = 0.11;
+        let ttt = adaptTresh.cvtColor(cv.COLOR_GRAY2BGR);
+        let num = 180;
+        mask = ttt.inRange(new cv.Vec3(num, num, num), new cv.Vec3(255, 255, 255));
+
+        /*let dilation_size = 0.7;
         let dilateStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2*dilation_size + 1, 2*dilation_size+1), new cv.Point( dilation_size, dilation_size ));
-        adaptTresh = adaptTresh.dilate(dilateStructure);
-
-
+        adaptTresh = adaptTresh.erode(dilateStructure);*/
 
         cv.imwrite(`./test_results/test_${slide}_canny.jpg`, canny);
-        cv.imwrite(`./test_results/test_${slide}.jpg`, adaptTresh);
+        cv.imwrite(`./test_results/test_${slide}.jpg`, mask);
 
         /*
         let channels = img.splitChannels();
