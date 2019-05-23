@@ -7,7 +7,79 @@ Object.keys(trainingData).forEach((slide) => {
         if(err) throw new Error(err);
 
         let gray = img.cvtColor(cv.COLOR_BGR2GRAY);
-        let thresh = gray.threshold(0, 255, cv.THRESH_OTSU | cv.THRESH_BINARY);
+        let adaptTresh = gray.adaptiveThreshold(255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 403, 63);
+        let canny = adaptTresh.canny(120, 200, 3);
+
+        let lines = canny.houghLinesP(1, Math.PI / 180, 1, 20, 1 );
+        let lineMask = img.cvtColor(cv.COLOR_BGR2GRAY);
+        lines.forEach((line) => {
+            let p1 = new cv.Point(line.y, line.x);
+            let p2 = new cv.Point(line.w, line.z);
+
+            lineMask.drawLine(p1, p2, new cv.Vec3(255, 0, 0), 2);
+        });
+
+        adaptTresh = adaptTresh.add(lineMask);
+
+        let dilation_size = 0.11;
+        let dilateStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2*dilation_size + 1, 2*dilation_size+1), new cv.Point( dilation_size, dilation_size ));
+        adaptTresh = adaptTresh.dilate(dilateStructure);
+
+
+
+        cv.imwrite(`./test_results/test_${slide}_canny.jpg`, canny);
+        cv.imwrite(`./test_results/test_${slide}.jpg`, adaptTresh);
+
+        /*
+        let channels = img.splitChannels();
+        let maskedChannels = channels.map(c => c.bitwiseAnd(redmask));
+        let maskOutput = new cv.Mat(maskedChannels);*/
+
+
+
+/*
+        let mask = img.inRange(new cv.Vec3(110, 190, 10), new cv.Vec3(255, 255, 255));
+        let blurred = mask.gaussianBlur(new cv.Size(3, 3), 0, 0 );
+        let thresh = mask.adaptiveThreshold(255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 15, 10);
+        let canny = thresh.canny(200, 100);
+
+        /*let dilation_size = 0.02;
+        let dilateStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2*dilation_size + 1, 2*dilation_size+1), new cv.Point( dilation_size, dilation_size ));
+        thresh = thresh.dilate(dilateStructure);
+
+        let angle = 1;
+        let lines = canny.houghLinesP(1, angle * (Math.PI / 180), 30, 1, 1 );
+        lines.forEach((line) => {
+            let p1 = new cv.Point(line.y, line.x);
+            let p2 = new cv.Point(line.w, line.z);
+
+            img.drawLine(p1, p2, new cv.Vec3(255, 0, 0), 2);
+        });
+
+
+        cv.imwrite(`./test_results/test_${slide}_canny.jpg`, thresh);
+        cv.imwrite(`./test_results/test_${slide}.jpg`, img);*/
+
+/*
+        // 40deg
+        let angle = 1;
+        let lines = canny.houghLinesP(1, angle * (Math.PI / 180), 40, 3, 1 );
+        let lineMat = canny.cvtColor(cv.COLOR_GRAY2BGR);
+
+        lines.forEach((line) => {
+            let p1 = new cv.Point(line.y, line.x);
+            let p2 = new cv.Point(line.w, line.z);
+
+            img.drawLine(p1, p2, new cv.Vec3(255, 0, 0), 2);
+        });
+
+        img = img.sub(lineMat);
+        //let test = gray.bgrToGray().adaptiveThreshold(255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 15, -2);
+
+        cv.imwrite(`./test_results/test_${slide}_canny.jpg`, canny);
+        cv.imwrite(`./test_results/test_${slide}.jpg`, img);*/
+
+        //let thresh = gray.threshold(0, 255, cv.THRESH_OTSU | cv.THRESH_BINARY);
     
         //let kernel = np.ones((5,4), np.uint8)
         /*let grayImg = img.bgrToGray();
@@ -28,7 +100,7 @@ Object.keys(trainingData).forEach((slide) => {
         
         bitwise_not(vertical, vertical);*/
 
-        cv.imwrite(`./test_${slide}.jpg`, thresh);
+        //cv.imwrite(`./test_results/test_${slide}.jpg`, canny);
 
         /*let grayImg = img.bgrToGray();
         let cake = grayImg.adaptiveThreshold(255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 85, 90);
