@@ -1,43 +1,15 @@
 
-const fs = require('fs-extra');
 const colors = require('colors');
-const Trainer = require('./src/models/trainer');
+
+const Mew = require('./src/models/meowtcha');
 const trainingData = require('./train_data/data.json');
-const DEBUG = false;
 
-function init() {
-    // only if training module not found
-    prepareTrainingFolders();
-}
+// Clear screen
+process.stdout.write("\u001b[2J\u001b[0;0H");
 
-function prepareTrainingFolders() {
-    fs.ensureDir('./fault_training').then(() => {
-        fs.ensureDir('./letters').then(() => {
-            fs.emptyDir('./fault_training').then(() => {
-                fs.emptyDir('./letters').then(() => {
-                    startTraining();
-                });
-            });
-        });
+let solver = new Mew(trainingData);
+solver.init(() => {
+    solver.solveMeowtcha('./train_data/img/200.jpg', (result) => {
+        console.debug('\n\nMeowster'.magenta + ", i think it's ".white + result.toString().inverse + " (=^-ω-^=)\n\n");
     });
-}
-
-function startTraining() {
-    let train = new Trainer(trainingData);
-
-    train.prepareData(() => {
-        if(DEBUG){
-            let dataKeys = Object.keys(train.letterData);
-            
-            console.debug('== Training data ==');
-            console.debug('== Total Letters : ' + dataKeys.length.toString().red + ' =='.white);
-            dataKeys.forEach((key) => {
-                console.debug('== ' + key.toString().red + ' -> ' + train.letterData[key].length.toString().green);
-            });
-        }
-
-        train.buildTrainModel();
-    });
-}
-
-init();
+});
