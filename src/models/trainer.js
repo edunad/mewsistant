@@ -1,11 +1,36 @@
 const cv = require('opencv4nodejs');
-const colors = require('colors');
+const tf = require('@tensorflow/tfjs-node');
 
 module.exports = class Trainer {
-
     constructor(trainingData) {
         this.trainingData = trainingData;
         this.letterData = {};
+    }
+
+    buildTrainModel() {
+        // Based of https://github.com/zxdong262/tf-captcha-reader/blob/master/main.py
+        // https://html5beta.com/page/tutorial-reading-captcha-with-tensorflow.html
+
+        // Keras or whatever this is
+        this.AImodel = tf.sequential();
+
+        this.AImodel.add(tf.layers.flatten({inputShape: [180, 45]})); // It will be a 180x45px captcha
+        this.AImodel.add(tf.layers.dense({units: 128, activation: "relu"})); // 128 layers
+        this.AImodel.add(tf.layers.dense({units: Object.keys(this.letterData).length, activation: "softmax"})); // Not entirely sure
+
+        this.AImodel.compile({optimizer: 'adam', loss: 'meanSquaredError', metrics: 'accuracy'});
+
+        Object.keys(this.letterData).forEach((label) => {
+            console.debug(this.letterData[label], label);
+            throw new Error('s');
+            this.AImodel.fit(this.letterData[label], label);
+        });
+
+    }
+
+    rgbToInt(r, g, b){
+        // Convert it to a 0 -> 1 value
+        return (r * 299/1000 + g * 587/1000 + b * 114/1000) / 255;
     }
 
     prepareData(callback) {
@@ -73,19 +98,31 @@ module.exports = class Trainer {
                     console.log('[Warning] '.red + `Invalid training image "${slide}". Expected 6 letters, found ${regions.length}!`);
                     return onDone();
                 }
-                
+
                 for(let i = 0; i < regions.length; i++) {
                     let letter = this.trainingData[slide][i];
                     let region = regions[i];
 
-                    // whatev, not sure how to copyTo, just add alpha to be able to .getData for now
-                    let mat = img.getRegion(new cv.Rect(region[0], region[1], region[2], region[3])).cvtColor(cv.COLOR_BGR2BGRA);
-                    
-                    if(this.letterData[letter] == null) this.letterData[letter] = [mat.getData()];
-                    else this.letterData[letter].push(mat.getData());
+                    let mat = img.getRegion(new cv.Rect(region[0], region[1], region[2], region[3]));
+                    mat = mat.resize(new cv.Size(28, 28)); // Scale all to 28x28
+
+                    let matData = mat.getDataAsArray();
+                    let fixedData = [];
+
+                    matData.forEach((colorRow) => {
+                        let newRow = [];
+                        colorRow.forEach((colorCol) => {
+                            newRow.push(this.rgbToInt(colorCol[2], colorCol[1], colorCol[0])); // BGR
+                        });
+                        
+                        fixedData.push(newRow);
+                    });
+
+                    if(this.letterData[letter] == null) this.letterData[letter] = [fixedData];
+                    else this.letterData[letter].push(fixedData);
 
                     // On Debug
-                    //cv.imwrite(`./letters/${letter}_${this.letterData[letter].length}.jpg`, mat);
+                    cv.imwrite(`./letters/${letter}_${this.letterData[letter].length}.jpg`, mat);
                 }
 
                 return onDone();
