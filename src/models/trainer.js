@@ -39,7 +39,6 @@ module.exports = class Trainer {
 
     loadModel(onLoad) {
         if(this.AImodel != null) return onLoad('Meow brain already initialized');
-
         fs.readJSON('./brains/meow_tail.json').then((jsonData) => {
             this.letterDatabase = jsonData;
 
@@ -57,6 +56,8 @@ module.exports = class Trainer {
             if(err) throw new Error(err);
 
             let regions = this.splitImage(img);
+            if(regions == null) return onDone(null);
+
             let result = [];
 
             let total = regions.length;
@@ -86,7 +87,7 @@ module.exports = class Trainer {
                     
                     let chosenOne = magic[0];
                     result.push(this.letterDatabase[chosenOne.value]);
-                    
+
                     return done();
                 });
             }
@@ -152,6 +153,8 @@ module.exports = class Trainer {
                 if(err) throw new Error(err);
 
                 let regions = this.splitImage(img);
+                if (regions == null) throw new Error(`Invalid training data ${slide}, could not split :(`);
+
                 for(let i = 0; i < regions.length; i++) {
                     let letter = this.trainingData[slide][i];
                     let region = regions[i];
@@ -161,9 +164,6 @@ module.exports = class Trainer {
         
                     this.letterData[letter + '_' + slide] = this.convertRGBData(mat);
                     if(this.letterDatabase.indexOf(letter) == -1) this.letterDatabase.push(letter);
-        
-                    // On Debug
-                    //cv.imwrite(`./letters/${letter}_${this.letterData[letter].length}.jpg`, mat);
                 }
 
                 return onDone();
@@ -185,8 +185,6 @@ module.exports = class Trainer {
         adaptTresh.drawRectangle(new cv.Point2(borderSize / 2, borderSize / 2), new cv.Point2(img.sizes[1] - borderSize / 2, img.sizes[0] - borderSize / 2), 
                              new cv.Vec3(255, 255, 255), borderSize);
 
-        
-        let readTresh = adaptTresh.add(gray);
         let inv = adaptTresh.sub(gray);
 
         dilation_size = 0.3;
@@ -211,13 +209,7 @@ module.exports = class Trainer {
             return -1;
         });
 
-        if (regions.length != 6) {
-            cv.imwrite(`./thresh_${slide}`, readTresh);
-            cv.imwrite(`./final_${slide}`, finalTresh);
-
-            throw new Error('[Warning] '.red + `Failed to split image "${slide}". Expected 6 letters, found ${regions.length}!`);
-        }
-
+        if (regions.length != 6) return null;
         return regions;
     }
 

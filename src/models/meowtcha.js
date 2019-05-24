@@ -47,7 +47,6 @@ module.exports = class Meowtcha {
             this.trainer.buildTrainModel(() => {
                 this.trainer.saveModel((err) => {
                     if(err) throw new Error(err);
-
                     return onTrained();
                 });
             });
