@@ -23,6 +23,8 @@
     "homepage": "https://github.com/edunad/mewtcha#readme",
     "dependencies": {
         "@tensorflow/tfjs-node": "^1.1.2",
+        "colors": "^1.3.3",
+        "fs-extra": "^8.0.1",
         "opencv4nodejs": "^4.16.0"
     },
     "devDependencies": {

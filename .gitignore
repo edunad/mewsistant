@@ -1,4 +1,5 @@
 node_modules
 .sourcemaps/
 .bin/
-test_results
+letters
+fault_training
