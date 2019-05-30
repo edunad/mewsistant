@@ -150,6 +150,13 @@ module.exports = class Trainer {
         
         Object.keys(this.trainingData).forEach((slide, indx) => {
             cv.imreadAsync(`./train_data/img/${slide}`, (err, img) => {
+                this.testMask(img, slide);
+            });
+        });
+
+        /*
+        Object.keys(this.trainingData).forEach((slide, indx) => {
+            cv.imreadAsync(`./train_data/img/${slide}`, (err, img) => {
                 if(err) throw new Error(err);
 
                 let regions = this.splitImage(img);
@@ -168,9 +175,50 @@ module.exports = class Trainer {
 
                 return onDone();
             });
-        });
+        });*/
     }
 
+
+    testMask(slide, id) {
+        cv.imreadAsync('./train_data/mask.png', (err, mask) => {
+            if(err) throw new Error(err);
+            let grayMask = mask.cvtColor(cv.COLOR_BGR2GRAY);
+            let gray = slide.cvtColor(cv.COLOR_BGR2GRAY);
+            let slideThresh = gray.adaptiveThreshold(255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 185, 13);
+
+            grayMask = grayMask.add(slideThresh);
+
+            let dilation_size = 0.8;
+            let dilateStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2*dilation_size + 1, 2*dilation_size+1), new cv.Point( dilation_size, dilation_size ));
+            grayMask = grayMask.erode(dilateStructure);
+
+            let borderSize = 5;
+            grayMask.drawRectangle(new cv.Point2(borderSize / 2, borderSize / 2), new cv.Point2(slide.sizes[1] - borderSize / 2, slide.sizes[0] - borderSize / 2), 
+                                 new cv.Vec3(255, 255, 255), borderSize);
+
+            let inv = grayMask.sub(gray);
+            let finalThresh = inv.adaptiveThreshold(255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 61, 3);
+            
+            let contours = inv.findContours(cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE);
+            let regions = [];
+
+            contours.forEach((countour) => {
+                let hull = countour.convexHull(false);
+                if (hull.area <= 80) return;
+    
+                let box = hull.boundingRect();
+                //regions.push([box.x, box.y, box.width, box.height]);
+                regions.push(hull);
+            });
+
+            for(let i = 0; i < regions.length; i++) {
+                slide.drawContours(regions, new cv.Vec3(255, 0, 0), i);
+            }
+
+            cv.imwrite(`./derp/${id}`, slide);
+        });
+    }
+    
     splitImage(img) {
         let gray = img.cvtColor(cv.COLOR_BGR2GRAY);
         let smooth = gray.gaussianBlur(new cv.Size(3, 3), 0, 0 );
