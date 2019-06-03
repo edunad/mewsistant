@@ -10,11 +10,13 @@ module.exports = class Meowtcha {
 
     init(done) {
         this.prepareFolders(() => {
-            this.checkBrain((exists) => {
-                if(!exists) return this.startTraining(done);
-                this.trainer.loadModel((err) => {
-                    if(err) throw new Error(err);
-                    return done();
+            this.trainer.initialize(() => {
+                this.checkBrain((exists) => {
+                    if(!exists) return this.startTraining(done);
+                    this.trainer.loadModel((err) => {
+                        if(err) throw new Error(err);
+                        return done();
+                    });
                 });
             });
         });
