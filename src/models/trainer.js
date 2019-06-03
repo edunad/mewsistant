@@ -2,8 +2,8 @@ const cv = require('opencv4nodejs');
 const tf = require('@tensorflow/tfjs-node');
 const fs = require('fs-extra');
 
-const epoch = 300;
-const batches = 20;
+const epoch = 400;
+const batches = 30;
 
 module.exports = class Trainer {
     constructor(trainingData, size) {
@@ -15,6 +15,15 @@ module.exports = class Trainer {
         this.letterDatabase = [];
 
         this.AImodel = null;
+    }
+
+    initialize(onDone) {
+        cv.imreadAsync('./train_data/mask.png', (err, mask) => {
+            if(err) throw new Error('Failed to load line mask');
+
+            this.lineMask = mask;
+            return onDone();
+        });
     }
 
     buildCharWeights() {
@@ -55,7 +64,7 @@ module.exports = class Trainer {
         cv.imreadAsync(slide, (err, img) => {
             if(err) throw new Error(err);
 
-            let regions = this.splitImage(img);
+            let regions = this.splitImage(img, this.lineMask);
             if(regions == null) return onDone(null);
 
             let result = [];
@@ -150,16 +159,9 @@ module.exports = class Trainer {
         
         Object.keys(this.trainingData).forEach((slide, indx) => {
             cv.imreadAsync(`./train_data/img/${slide}`, (err, img) => {
-                this.testMask(img, slide);
-            });
-        });
-
-        /*
-        Object.keys(this.trainingData).forEach((slide, indx) => {
-            cv.imreadAsync(`./train_data/img/${slide}`, (err, img) => {
                 if(err) throw new Error(err);
 
-                let regions = this.splitImage(img);
+                let regions = this.splitImage(img, this.lineMask);
                 if (regions == null) throw new Error(`Invalid training data ${slide}, could not split :(`);
 
                 for(let i = 0; i < regions.length; i++) {
@@ -175,77 +177,40 @@ module.exports = class Trainer {
 
                 return onDone();
             });
-        });*/
-    }
-
-
-    testMask(slide, id) {
-        cv.imreadAsync('./train_data/mask.png', (err, mask) => {
-            if(err) throw new Error(err);
-            let grayMask = mask.cvtColor(cv.COLOR_BGR2GRAY);
-            let gray = slide.cvtColor(cv.COLOR_BGR2GRAY);
-            let slideThresh = gray.adaptiveThreshold(255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 185, 13);
-
-            grayMask = grayMask.add(slideThresh);
-
-            let dilation_size = 0.8;
-            let dilateStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2*dilation_size + 1, 2*dilation_size+1), new cv.Point( dilation_size, dilation_size ));
-            grayMask = grayMask.erode(dilateStructure);
-
-            let borderSize = 5;
-            grayMask.drawRectangle(new cv.Point2(borderSize / 2, borderSize / 2), new cv.Point2(slide.sizes[1] - borderSize / 2, slide.sizes[0] - borderSize / 2), 
-                                 new cv.Vec3(255, 255, 255), borderSize);
-
-            let inv = grayMask.sub(gray);
-            let finalThresh = inv.adaptiveThreshold(255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 61, 3);
-            
-            let contours = inv.findContours(cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE);
-            let regions = [];
-
-            contours.forEach((countour) => {
-                let hull = countour.convexHull(false);
-                if (hull.area <= 80) return;
-    
-                let box = hull.boundingRect();
-                //regions.push([box.x, box.y, box.width, box.height]);
-                regions.push(hull);
-            });
-
-            for(let i = 0; i < regions.length; i++) {
-                slide.drawContours(regions, new cv.Vec3(255, 0, 0), i);
-            }
-
-            cv.imwrite(`./derp/${id}`, slide);
         });
     }
-    
-    splitImage(img) {
-        let gray = img.cvtColor(cv.COLOR_BGR2GRAY);
+
+    splitImage(slide, mask) {
+        if(mask == null) throw new Error('Invalid line mask');
+
+        let grayMask = mask.cvtColor(cv.COLOR_BGR2GRAY);
+        let gray = slide.cvtColor(cv.COLOR_BGR2GRAY);
         let smooth = gray.gaussianBlur(new cv.Size(3, 3), 0, 0 );
 
         let dilation_size = 4;
         let dilateStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2*dilation_size + 1, 2*dilation_size+1), new cv.Point( dilation_size, dilation_size ));
         smooth = smooth.erode(dilateStructure);
 
-        let adaptTresh = smooth.adaptiveThreshold(255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 185, 13);
-        
+        let slideThresh = smooth.adaptiveThreshold(255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 185, 18);
+
         let borderSize = 5;
-        adaptTresh.drawRectangle(new cv.Point2(borderSize / 2, borderSize / 2), new cv.Point2(img.sizes[1] - borderSize / 2, img.sizes[0] - borderSize / 2), 
-                             new cv.Vec3(255, 255, 255), borderSize);
+        grayMask.drawRectangle(new cv.Point2(borderSize / 2, borderSize / 2), new cv.Point2(slide.sizes[1] - borderSize / 2, slide.sizes[0] - borderSize / 2), 
+                                new cv.Vec3(255, 255, 255), borderSize);
 
-        let inv = adaptTresh.sub(gray);
+        grayMask = grayMask.add(slideThresh);
 
-        dilation_size = 0.3;
-        dilateStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2*dilation_size + 1, 2*dilation_size+1), new cv.Point( dilation_size, dilation_size ));
-        inv = inv.erode(dilateStructure);
+        dilation_size = 6;
+        dilateStructure = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(2, 2*dilation_size+1), new cv.Point( 0.5, dilation_size ));
+        grayMask = grayMask.erode(dilateStructure);
 
-        let finalTresh = inv.threshold(1, 10, cv.THRESH_BINARY_INV);
-        let contours = finalTresh.findContours(cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE);
-        let regions = [];
+        let finalTresh = grayMask.threshold(1, 30, cv.THRESH_BINARY_INV | cv.THRESH_OTSU);
         
+        let contours = finalTresh.findContours(cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE);
+        let regions = [];
+
         contours.forEach((countour) => {
-            let hull = countour.convexHull(false);
-            if (hull.area <= 100) return;
+            let hull = countour.convexHull(true);
+            if (hull.area <= 80) return;
 
             let box = hull.boundingRect();
             regions.push([box.x, box.y, box.width, box.height]);
@@ -260,7 +225,7 @@ module.exports = class Trainer {
         if (regions.length != 6) return null;
         return regions;
     }
-
+    
     convertRGBData(mat) {
         let matData = mat.getDataAsArray();
         let fixedData = [];
