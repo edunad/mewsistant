@@ -61,8 +61,8 @@ module.exports = class Trainer {
     }
 
     predict(slide, onDone) {
-        cv.imreadAsync(slide, (err, img) => {
-            if(err) throw new Error(err);
+            const img = cv.imdecode(slide);
+            // if(err) throw new Error(err);
 
             let regions = this.splitImage(img, this.lineMask);
             if(regions == null) return onDone(null);
@@ -100,7 +100,7 @@ module.exports = class Trainer {
                     return done();
                 });
             }
-        });
+        
     }
 
     buildTrainModel(done) {
