@@ -2,8 +2,8 @@ const cv = require('opencv4nodejs');
 const tf = require('@tensorflow/tfjs-node');
 const fs = require('fs-extra');
 
-const epoch = 400;
-const batches = 30;
+const epoch = 500;
+const batches = 100;
 
 module.exports = class Trainer {
     constructor(trainingData, size) {
