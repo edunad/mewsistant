@@ -1,5 +1,6 @@
 const express = require('express');
 const fs = require('fs')
+const sizeOf = require('image-size')
 
 const Mew = require('./src/models/meowtcha');
 const trainingData = require('./train_data/data.json');
@@ -15,24 +16,34 @@ app.get('*', (res, req)=>{
 })
 
 const handleUpload = (req, res, next) => {
+    if(req.headers['content-length'] > 5000) return res.status(400).json({ text: null, message: `Image is too big`})
+
     req.on('data', (data)=>{
         req.data = data;
     })
-    req.on('end', next);
+
+    req.on('end', ()=>{
+        try {
+            const size = sizeOf(req.data)
+            if(size.width == 180 && size.height == 45) return next()
+        } catch(e){
+            res.status(400).json({ text: null, message: "Invalid request"})
+        }
+    })
 }
 
 app.post('/detect', handleUpload, (req,res) => {
-    const capa = req.data;
-    solver.solveMeowtcha(capa, (result) =>{
-        if(result == null) {
-            res.json({ text: null });
-        } else {
-            res.json({ text: result.join("") });
-        }
+    const capatchaImage = req.data;
+    solver.solveMeowtcha(capatchaImage, (result) =>{
+        if(result == null) return res.status(400).json({ text: null, message: "Unable to resolve" })
+        
+        res.json({ text: result.join("") })
     })
 })
 
 solver.init(()=>{
     mew.status = 'mew!';
-    app.listen(3131);
+    app.listen(3131, ()=>{
+        console.info(`webserver started`)
+    });
 });
