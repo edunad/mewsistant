@@ -7,12 +7,10 @@ const trainingData = require('./train_data/data.json');
 
 const app = express();
 
-let mew = { status: 'mewing!' }
-
 let solver = new Mew(trainingData);
 
 app.get('*', (res, req)=>{
-    req.json(mew);
+    req.json({ status: "OK", uptime: process.uptime() });
 })
 
 const handleUpload = (req, res, next) => {
@@ -42,7 +40,7 @@ app.post('/detect', handleUpload, (req,res) => {
 })
 
 solver.init(()=>{
-    mew.status = 'mew!';
+    console.info(`meowtcha initialized`)
     app.listen(3131, ()=>{
         console.info(`webserver started`)
     });
